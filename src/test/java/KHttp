@@ -1,0 +1,150 @@
+	public class VolleyTasks extends KTaskExecutor<String, Object, String>
+	{
+		private int respondCode = -1;
+		private String respondMsg = "";
+		private Method requestMethod;
+		private String url;
+		private KParams kparams;
+		private HttpCallBack callback;
+		private String charsetName = "UTF-8";
+		String json;
+		String cookie = "";
+		private ByteArrayOutputStream bos;
+		private byte[] dataByte;
+		String result;
+		boolean override;
+		private int Count;
+		private HttpURLConnection connection;
+
+		public VolleyTasks(Method requestMethod, String uri, KParams params, HttpCallBack callback, boolean override)
+		{
+			this.requestMethod = requestMethod;
+			this.url = uri;
+			this.kparams = params;
+			this.callback = callback;
+			this.override = override;
+		}
+
+		@Override
+		protected String doInBackground(String... params)
+		{
+			if (!NetWorkUtil.isNetworkAvailable(BaseApplication.getInstance().getContext()))
+			{
+				return netmessage;
+			}
+			// if (kparams.get(ShpfKey.wait)!=null)
+			// {
+			// waitMintues();
+			// }
+			InputStream input = null;
+			FileInputStream in = null;
+			DataOutputStream out = null;
+			// while (Count < 2)
+			// {
+			try
+			{
+				URL urls = new URL(url);
+				List<File> filelist = kparams.filelist;
+
+				for (int i = 0; i < filelist.size(); i++)
+				{
+					File file = filelist.get(i);
+					connection = (HttpURLConnection) urls.openConnection();
+					connection.setConnectTimeout(config.timeOut);
+					connection.setReadTimeout(config.timeOut);
+					connection.setUseCaches(false);
+					connection.setDoInput(true);
+					if (override)
+					{
+						connection.setRequestMethod("PUT");
+					}
+					else
+					{
+						connection.setRequestMethod("POST");
+					}
+
+					connection.setDoOutput(true);
+					connection.setRequestProperty("connection", "Keep-Alive");
+					connection.setRequestProperty("Content-Type", "multipart/form-data");
+					out = new DataOutputStream(connection.getOutputStream());
+					in = new FileInputStream(file);
+					int bytes = 0;
+					byte[] buf = new byte[1024];
+					while ((bytes = in.read(buf)) != -1)
+					{
+						out.write(buf, 0, bytes);
+					}
+					out.flush();
+					input = connection.getInputStream();
+					int len = 0;
+					byte[] bss = new byte[1024 * 8];
+					bos = new ByteArrayOutputStream();
+					while ((len = input.read(bss)) != -1)
+					{
+						bos.write(bss, 0, len);
+					}
+					dataByte = bos.toByteArray();
+					LogUtil.e("dataByte", new String(dataByte) + "");
+					TFSFileEntity tfsfile = new Gson().fromJson(new String(dataByte), TFSFileEntity.class);
+					if (result == null)
+					{
+						result = tfsfile.getTFS_FILE_NAME();
+					}
+					else
+					{
+						result = result + "," + tfsfile.getTFS_FILE_NAME();
+					}
+				}
+				WisdomCampusCommonUtils.closeIO(input, bos, in);
+				closeIO(out);
+				connection.disconnect();
+				Count = 2;
+
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+				connection.disconnect();
+				FileLogUtil.writeLogtoSdcard("VolleyTasks", e.getMessage() + "");
+				
+				return "$%"+e.getMessage();
+			}
+			return result;
+		}
+
+		@Override
+		protected void onPostExecute(String result)
+		{
+
+			LogUtil.w(url + "", result + "");
+			try
+			{
+				super.onPostExecute(result);
+				kparams.Clear();
+				if (StringUtil.isEmpty(result) || result.equals(netmessage)||result.startsWith("$%"))
+				{
+					if (StringUtil.isEmpty(result))
+					{
+						callback.onFailure(errormessage, errorId);
+					}
+					else
+					{
+						callback.onFailure(netmessage, errorId);
+					}
+
+				}
+				else
+				{
+					FileLogUtil.writeLogtoSdcard("upurl", "upsuccess");
+					callback.onSuccess(result);
+
+				}
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+
+			}
+
+		}
+	}

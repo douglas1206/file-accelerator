@@ -1,0 +1,11 @@
+
+
+
+####
+tfs=http://tfs.lar01.com/v1/wisdom-pc-client
+tfs.maxWait=86400000
+
+cache=true
+cache.maxsize=10
+cache.root=C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\CacheDir
+cache.outdate=7
